@@ -3,9 +3,37 @@ import hashlib
 import json
 import time
 import pandas as pd
-from fpdf import FPDF
-import io
-import os
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
+# ---------------- PDF Generator ---------------- #
+def generate_certificate_pdf(data):
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    c.setFont("Helvetica-Bold", 20)
+    c.drawCentredString(width / 2, height - 100, "Certificate of Achievement")
+
+    c.setFont("Helvetica", 12)
+    lines = [
+        f"Student Name: {data['Student Name']}",
+        f"Course: {data['Course']}",
+        f"University: {data['University']}",
+        f"Date of Issue: {data['Date of Issue']}",
+        f"Type: {data['Type']}",
+        f"Issuer: {data['Issuer']}",
+        f"Grade: {data['Grade']}",
+        f"Remarks: {data['Remarks']}"
+    ]
+    for i, line in enumerate(lines):
+        c.drawString(100, height - 150 - (i * 20), line)
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
 
 # ---------------- Blockchain Classes ---------------- #
 class Block:
@@ -20,7 +48,6 @@ class Block:
     def calculate_hash(self):
         block_string = f"{self.index}{self.previous_hash}{self.timestamp}{json.dumps(self.data, sort_keys=True)}{self.nonce}"
         return hashlib.sha256(block_string.encode()).hexdigest()
-
 
 class Blockchain:
     def __init__(self):
@@ -38,9 +65,9 @@ class Blockchain:
         self.chain.append(new_block)
 
     def mine_block(self, data):
-        new_block = Block(len(self.chain), self.get_latest_block().hash, time.time(), data)
+        latest_block = self.get_latest_block()
+        new_block = Block(len(self.chain), latest_block.hash, time.time(), data)
         self.add_block(new_block)
-        return new_block
 
     def verify_certificate(self, student_name, course_name):
         for block in self.chain[1:]:
@@ -50,61 +77,28 @@ class Blockchain:
                 return True, data
         return False, None
 
-
-# ---------------- PDF Generator ---------------- #
-def generate_certificate_pdf(cert_data):
-    pdf = FPDF()
-    pdf.add_page()
-
-    # Add Unicode font (DejaVuSans.ttf must be in project folder)
-    pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
-
-    # Title
-    pdf.set_font("DejaVu", "B", 16)
-    pdf.cell(200, 10, "🎓 Blockchain Certificate", ln=True, align="C")
-
-    pdf.ln(10)
-    pdf.set_font("DejaVu", "", 12)
-    for key, value in cert_data.items():
-        pdf.cell(0, 10, f"{key}: {value}", ln=True)
-
-    pdf_output = io.BytesIO()
-    pdf.output(pdf_output)
-    pdf_output.seek(0)
-    return pdf_output
-
-
 # ---------------- Streamlit UI ---------------- #
 st.set_page_config(page_title="Blockchain Certificate Verification", layout="wide")
 
-# Initialize blockchain in session state
 if "blockchain" not in st.session_state:
     st.session_state.blockchain = Blockchain()
-if "last_cert" not in st.session_state:
-    st.session_state.last_cert = None
 
 blockchain = st.session_state.blockchain
 
 st.title("🎓 Blockchain-based Student Certificate Verification System")
+tabs = st.tabs(["➕ Issue Certificate", "📑 Stored Certificates", "✅ Verify Certificate", "🔗 Blockchain Calculation"])
 
-tabs = st.tabs([
-    "➕ Issue Certificate",
-    "📑 Stored Certificates",
-    "✅ Verify Certificate",
-    "🔗 Blockchain Calculation"
-])
-
-# ---------------- Tab 1: Issue Certificate ---------------- #
+# ---------------- Tab 1 ---------------- #
 with tabs[0]:
     st.header("➕ Issue a New Certificate")
-
     col1, col2 = st.columns(2)
+
     with col1:
         student_name = st.text_input("👤 Student Name")
         course_name = st.text_input("📘 Course Name")
         university = st.text_input("🏫 University / Institution")
-        cert_type = st.selectbox("📜 Type of Certificate",
-                                 ["Academic", "Participation", "Excellence", "Sports", "Cultural", "Other"])
+        cert_type = st.selectbox("📜 Type of Certificate", ["Academic", "Participation", "Excellence", "Sports", "Cultural", "Other"])
+
     with col2:
         date_of_issue = st.date_input("📅 Date of Issue")
         issuer = st.text_input("🖊️ Issued By (Authority/Professor)")
@@ -112,86 +106,50 @@ with tabs[0]:
         remarks = st.text_area("📝 Remarks", placeholder="Additional comments (optional)")
 
     if st.button("⛏️ Mine & Issue Certificate"):
-        if student_name and course_name and university and issuer:
-            cert_data = {
-                "Student Name": student_name,
-                "Course": course_name,
-                "University": university,
-                "Type": cert_type,
-                "Date of Issue": str(date_of_issue),
-                "Issuer": issuer,
-                "Grade": grade,
-                "Remarks": remarks
-            }
-            blockchain.mine_block(cert_data)
-            st.success(f"✅ Certificate for {student_name} issued successfully!")
-            st.session_state.last_cert = cert_data
-        else:
-            st.warning("⚠️ Please fill all mandatory fields (Student, Course, University, Issuer).")
+        cert_data = {
+            "Student Name": student_name,
+            "Course": course_name,
+            "University": university,
+            "Type": cert_type,
+            "Date of Issue": str(date_of_issue),
+            "Issuer": issuer,
+            "Grade": grade,
+            "Remarks": remarks
+        }
+        blockchain.mine_block(cert_data)
+        st.success(f"✅ Certificate for {student_name} issued successfully and added to blockchain!")
 
-    # PDF Download for last issued certificate
-    if st.session_state.last_cert:
-        pdf_file = generate_certificate_pdf(st.session_state.last_cert)
-        st.download_button(
-            label="⬇️ Download Last Issued Certificate (PDF)",
-            data=pdf_file,
-            file_name=f"certificate_{st.session_state.last_cert['Student Name'].replace(' ', '_')}.pdf",
-            mime="application/pdf"
-        )
-
-# ---------------- Tab 2: Stored Certificates ---------------- #
+# ---------------- Tab 2 ---------------- #
 with tabs[1]:
     st.header("📑 Stored Certificates (Blockchain Ledger)")
 
     if len(blockchain.chain) > 1:
-        records = []
         for block in blockchain.chain[1:]:
             data = block.data
-            record = {
-                "Block Index": block.index,
-                "Student Name": data["Student Name"],
-                "Course": data["Course"],
-                "University": data["University"],
-                "Type": data["Type"],
-                "Date of Issue": data["Date of Issue"],
-                "Issuer": data["Issuer"],
-                "Grade": data["Grade"],
-                "Remarks": data["Remarks"],
-                "Hash": block.hash
-            }
-            records.append(record)
+            with st.expander(f"📄 Certificate: {data['Student Name']} - {data['Course']}"):
+                st.write(f"**University:** {data['University']}")
+                st.write(f"**Type:** {data['Type']}")
+                st.write(f"**Date of Issue:** {data['Date of Issue']}")
+                st.write(f"**Issuer:** {data['Issuer']}")
+                st.write(f"**Grade:** {data['Grade']}")
+                st.write(f"**Remarks:** {data['Remarks']}")
+                st.write(f"**Block Hash:** {block.hash}")
 
-        df = pd.DataFrame(records)
-        st.dataframe(df, use_container_width=True)
-
-        # CSV Download
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="⬇️ Download All Certificates (CSV)",
-            data=csv,
-            file_name="certificates_blockchain.csv",
-            mime="text/csv"
-        )
-
-        # Excel Download
-        excel_bytes = io.BytesIO()
-        with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Certificates")
-        excel_bytes.seek(0)
-        st.download_button(
-            label="⬇️ Download All Certificates (Excel)",
-            data=excel_bytes,
-            file_name="certificates_blockchain.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+                pdf_buffer = generate_certificate_pdf(data)
+                st.download_button(
+                    label="📥 Download Certificate as PDF",
+                    data=pdf_buffer,
+                    file_name=f"{data['Student Name']}_{data['Course']}_certificate.pdf",
+                    mime="application/pdf"
+                )
     else:
         st.info("⚠️ No certificates have been issued yet.")
 
-# ---------------- Tab 3: Verify Certificate ---------------- #
+# ---------------- Tab 3 ---------------- #
 with tabs[2]:
     st.header("✅ Verify a Certificate")
-
     col1, col2 = st.columns(2)
+
     with col1:
         search_name = st.text_input("👤 Enter Student Name")
     with col2:
@@ -206,9 +164,9 @@ with tabs[2]:
             else:
                 st.error("❌ Certificate not found in the blockchain.")
         else:
-            st.warning("⚠️ Please enter both Student Name and Course Name.")
+            st.warning("⚠️ Please enter both Student Name and Course Name for verification.")
 
-# ---------------- Tab 4: Blockchain Calculation ---------------- #
+# ---------------- Tab 4 ---------------- #
 with tabs[3]:
     st.header("🔗 Blockchain Structure & Calculation")
     for block in blockchain.chain:
