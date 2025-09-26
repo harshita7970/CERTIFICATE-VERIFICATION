@@ -10,89 +10,93 @@ from time import time
 class Blockchain:
     def __init__(self):
         self.chain = []
-        self.pending_certificates = []
+        self.pending = []
         self.create_block(previous_hash="0")  # Genesis block
 
-    # ---------------------------
-    # Core Blockchain Functions
-    # ---------------------------
     def create_block(self, previous_hash):
         block = {
             "index": len(self.chain) + 1,
             "timestamp": time(),
-            "certificates": self.pending_certificates,
+            "certificates": self.pending,
             "previous_hash": previous_hash
         }
         block["hash"] = self.hash(block)
-        self.pending_certificates = []  # Reset pending certificates
+        self.pending = []  # reset pending list
         self.chain.append(block)
         return block
 
-    def add_certificate(self, student_name, course_name):
-        certificate = {"student_name": student_name, "course_name": course_name}
-        self.pending_certificates.append(certificate)
-        return certificate
+    def add_certificate(self, student, course):
+        cert = {"student": student, "course": course}
+        self.pending.append(cert)
+        return cert
 
     @staticmethod
     def hash(block):
-        block_copy = block.copy()
-        block_copy.pop("hash", None)
-        return hashlib.sha256(json.dumps(block_copy, sort_keys=True).encode()).hexdigest()
+        copy = block.copy()
+        copy.pop("hash", None)
+        return hashlib.sha256(json.dumps(copy, sort_keys=True).encode()).hexdigest()
 
-    # ---------------------------
-    # Verification Functions
-    # ---------------------------
-    def verify_certificate(self, student_name):
+    def verify(self, student):
         for block in self.chain:
             for cert in block["certificates"]:
-                if cert["student_name"].lower() == student_name.lower():
-                    return True, cert, block["index"], block["hash"]
-        return False, None, None, None
+                if cert["student"].lower() == student.lower():
+                    return True, cert, block
+        return False, None, None
 
-    def search_by_course(self, course_name):
-        results = []
-        for block in self.chain:
-            for cert in block["certificates"]:
-                if cert["course_name"].lower() == course_name.lower():
-                    results.append((cert, block["index"], block["hash"]))
-        return results
-
-    def get_chain(self):
-        return self.chain
 
 # ---------------------------
-# Helper Functions for Streamlit
+# Streamlit UI
 # ---------------------------
 
-def issue_certificate_ui():
-    st.header("📄 Issue a New Certificate")
-    with st.form("issue_cert_form"):
-        student_name = st.text_input("Student Name")
-        course_name = st.text_input("Course Name")
-        submit_cert = st.form_submit_button("Issue Certificate")
-        if submit_cert:
-            if student_name.strip() == "" or course_name.strip() == "":
-                st.warning("Please provide both student name and course name.")
-            else:
-                certificate = st.session_state.blockchain.add_certificate(student_name, course_name)
-                st.success(f"Certificate added for {student_name} - {course_name}. ✅")
+if "bc" not in st.session_state:
+    st.session_state.bc = Blockchain()
 
-def mine_block_ui():
-    st.header("⛏️ Mine Certificates to Blockchain")
-    if st.button("Mine Block"):
-        if len(st.session_state.blockchain.pending_certificates) == 0:
-            st.warning("No certificates to mine!")
-        else:
-            last_hash = st.session_state.blockchain.chain[-1]["hash"]
-            block = st.session_state.blockchain.create_block(last_hash)
-            st.success(f"Block #{block['index']} mined successfully! 🔗")
-            st.json(block)
+st.title("🎓 Blockchain-based Student Certificate Verification")
+st.caption("Tamper-proof storage and verification of student certificates")
 
-def verify_certificate_ui():
-    st.header("🔍 Verify Certificate")
-    search_name = st.text_input("Enter Student Name to Verify")
-    if st.button("Verify"):
-        if search_name.strip() == "":
-            st.warning("Enter a student name.")
+# ---- Issue Certificate ----
+st.subheader("📄 Issue Certificate")
+with st.form("form_issue"):
+    student = st.text_input("Student Name")
+    course = st.text_input("Course Name")
+    submitted = st.form_submit_button("Add to Pending")
+    if submitted:
+        if student and course:
+            st.session_state.bc.add_certificate(student, course)
+            st.success(f"✅ Certificate for {student} added to pending list.")
         else:
-            found, cert, block_index, bl_
+            st.warning("⚠️ Please enter both Student and Course.")
+
+# ---- Mine Block ----
+st.subheader("⛏️ Mine Certificates into Block")
+if st.button("Mine Block"):
+    if len(st.session_state.bc.pending) == 0:
+        st.info("No certificates to mine yet.")
+    else:
+        prev_hash = st.session_state.bc.chain[-1]["hash"]
+        block = st.session_state.bc.create_block(prev_hash)
+        st.success(f"Block #{block['index']} mined successfully!")
+        st.json(block)
+
+# ---- Verify Certificate ----
+st.subheader("🔍 Verify Certificate")
+student_search = st.text_input("Enter Student Name to Verify")
+if st.button("Verify"):
+    found, cert, block = st.session_state.bc.verify(student_search)
+    if found:
+        st.success(f"✅ Certificate Found!\n\n"
+                   f"**Student:** {cert['student']}\n\n"
+                   f"**Course:** {cert['course']}\n\n"
+                   f"**Block #:** {block['index']}\n\n"
+                   f"**Block Hash:** {block['hash']}")
+    else:
+        st.error("❌ Certificate not found.")
+
+# ---- Show Blockchain ----
+st.subheader("📦 Blockchain Ledger")
+for block in st.session_state.bc.chain:
+    with st.expander(f"Block #{block['index']}"):
+        st.write(f"Timestamp: {block['timestamp']}")
+        st.write(f"Previous Hash: {block['previous_hash']}")
+        st.json(block["certificates"])
+        st.write(f"Block Hash: {block['hash']}")
