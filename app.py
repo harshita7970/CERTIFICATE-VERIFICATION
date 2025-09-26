@@ -13,7 +13,7 @@ def generate_certificate_pdf(data):
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    # Background color
+    # Background
     c.setFillColorRGB(1, 0.98, 0.9)
     c.rect(0, 0, width, height, fill=1)
 
@@ -32,39 +32,48 @@ def generate_certificate_pdf(data):
     c.restoreState()
 
     # Title
-    c.setFont("Helvetica-Bold", 24)
+    c.setFont("Helvetica-Bold", 14)
     c.setFillColorRGB(0.2, 0.4, 0.6)
     c.drawCentredString(width / 2, height - 100, "Certificate of Achievement")
 
-    # Subtitle
-    c.setFont("Helvetica", 14)
-    c.setFillColorRGB(0, 0, 0)
-    c.drawCentredString(width / 2, height - 130, "This certifies that")
-
-    # Student Name
-    c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(width / 2, height - 160, data["Student Name"])
-
-    # Course Info
-    c.setFont("Helvetica", 14)
-    c.drawCentredString(width / 2, height - 190, "has successfully completed the course")
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(width / 2, height - 215, data["Course"])
-
-    # Details
+    # Body text
     c.setFont("Helvetica", 12)
-    detail_lines = [
-        f"University: {data['University']}",
-        f"Date of Issue: {data['Date of Issue']}",
-        f"Type: {data['Type']}",
-        f"Issued By: {data['Issuer']}",
-        f"Grade: {data['Grade']}",
-        f"Remarks: {data['Remarks']}"
-    ]
-    y = height - 270
-    for line in detail_lines:
-        c.drawCentredString(width / 2, y, line)
-        y -= 20
+    c.setFillColorRGB(0, 0, 0)
+    text = c.beginText(80, height - 140)
+    text.setLeading(18)
+    text.setFont("Helvetica", 12)
+
+    body = f"""
+This is to certify that
+
+Student Name: {data['Student Name']}
+
+has successfully completed the course
+
+Course Name: {data['Course']}
+
+at
+
+University / Institution: {data['University']}
+
+This certificate is issued for Type of Certificate: {data['Type']}
+
+Date of Issue: {data['Date of Issue']}
+
+Grade / Score (Optional): {data['Grade']}
+
+Remarks: {data['Remarks']}
+
+Issued by: {data['Issuer']}
+
+Signature: ________________________
+Seal of University/Institution: ________________________
+    """.strip()
+
+    for line in body.split('\n'):
+        text.textLine(line.strip())
+
+    c.drawText(text)
 
     # Footer
     c.setFont("Helvetica-Oblique", 10)
