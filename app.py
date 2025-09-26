@@ -72,6 +72,8 @@ st.set_page_config(page_title="Blockchain Certificate Verification", layout="wid
 # Initialize blockchain in session state
 if "blockchain" not in st.session_state:
     st.session_state.blockchain = Blockchain()
+if "last_cert" not in st.session_state:
+    st.session_state.last_cert = None
 
 blockchain = st.session_state.blockchain
 
@@ -115,18 +117,19 @@ with tabs[0]:
             }
             blockchain.mine_block(cert_data)
             st.success(f"✅ Certificate for {student_name} issued successfully!")
-
-            # PDF Download
-            pdf_file = generate_certificate_pdf(cert_data)
-            st.download_button(
-                label="⬇️ Download This Certificate (PDF)",
-                data=pdf_file,
-                file_name=f"certificate_{student_name.replace(' ', '_')}.pdf",
-                mime="application/pdf"
-            )
+            st.session_state.last_cert = cert_data
         else:
             st.warning("⚠️ Please fill all mandatory fields (Student, Course, University, Issuer).")
 
+    # PDF Download for last issued certificate
+    if st.session_state.last_cert:
+        pdf_file = generate_certificate_pdf(st.session_state.last_cert)
+        st.download_button(
+            label="⬇️ Download Last Issued Certificate (PDF)",
+            data=pdf_file,
+            file_name=f"certificate_{st.session_state.last_cert['Student Name'].replace(' ', '_')}.pdf",
+            mime="application/pdf"
+        )
 
 # ---------------- Tab 2: Stored Certificates ---------------- #
 with tabs[1]:
@@ -173,10 +176,8 @@ with tabs[1]:
             file_name="certificates_blockchain.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
     else:
         st.info("⚠️ No certificates have been issued yet.")
-
 
 # ---------------- Tab 3: Verify Certificate ---------------- #
 with tabs[2]:
@@ -198,7 +199,6 @@ with tabs[2]:
                 st.error("❌ Certificate not found in the blockchain.")
         else:
             st.warning("⚠️ Please enter both Student Name and Course Name.")
-
 
 # ---------------- Tab 4: Blockchain Calculation ---------------- #
 with tabs[3]:
