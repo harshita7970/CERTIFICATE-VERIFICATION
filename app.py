@@ -13,22 +13,63 @@ def generate_certificate_pdf(data):
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    c.setFont("Helvetica-Bold", 20)
+    # Background color
+    c.setFillColorRGB(1, 0.98, 0.9)
+    c.rect(0, 0, width, height, fill=1)
+
+    # Border
+    c.setStrokeColorRGB(0.2, 0.4, 0.6)
+    c.setLineWidth(4)
+    c.rect(30, 30, width - 60, height - 60)
+
+    # Watermark
+    c.setFont("Helvetica-Bold", 40)
+    c.setFillColorRGB(0.9, 0.9, 0.9)
+    c.saveState()
+    c.translate(width / 2, height / 2)
+    c.rotate(45)
+    c.drawCentredString(0, 0, data["University"])
+    c.restoreState()
+
+    # Title
+    c.setFont("Helvetica-Bold", 24)
+    c.setFillColorRGB(0.2, 0.4, 0.6)
     c.drawCentredString(width / 2, height - 100, "Certificate of Achievement")
 
+    # Subtitle
+    c.setFont("Helvetica", 14)
+    c.setFillColorRGB(0, 0, 0)
+    c.drawCentredString(width / 2, height - 130, "This certifies that")
+
+    # Student Name
+    c.setFont("Helvetica-Bold", 18)
+    c.drawCentredString(width / 2, height - 160, data["Student Name"])
+
+    # Course Info
+    c.setFont("Helvetica", 14)
+    c.drawCentredString(width / 2, height - 190, "has successfully completed the course")
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(width / 2, height - 215, data["Course"])
+
+    # Details
     c.setFont("Helvetica", 12)
-    lines = [
-        f"Student Name: {data['Student Name']}",
-        f"Course: {data['Course']}",
+    detail_lines = [
         f"University: {data['University']}",
         f"Date of Issue: {data['Date of Issue']}",
         f"Type: {data['Type']}",
-        f"Issuer: {data['Issuer']}",
+        f"Issued By: {data['Issuer']}",
         f"Grade: {data['Grade']}",
         f"Remarks: {data['Remarks']}"
     ]
-    for i, line in enumerate(lines):
-        c.drawString(100, height - 150 - (i * 20), line)
+    y = height - 270
+    for line in detail_lines:
+        c.drawCentredString(width / 2, y, line)
+        y -= 20
+
+    # Footer
+    c.setFont("Helvetica-Oblique", 10)
+    c.setFillColorRGB(0.4, 0.4, 0.4)
+    c.drawCentredString(width / 2, 50, "This certificate is digitally generated and secured via blockchain.")
 
     c.showPage()
     c.save()
@@ -141,7 +182,7 @@ with tabs[1]:
                     data=pdf_buffer,
                     file_name=f"{data['Student Name']}_{data['Course']}_certificate.pdf",
                     mime="application/pdf",
-                    key=f"download_{block.index}"  # ✅ Unique key to prevent error
+                    key=f"download_{block.index}"
                 )
     else:
         st.info("⚠️ No certificates have been issued yet.")
@@ -172,11 +213,6 @@ with tabs[3]:
     st.header("🔗 Blockchain Structure & Calculation")
     for block in blockchain.chain:
         with st.expander(f"Block {block.index}"):
-            st.write(f"**Timestamp:** {time.ctime(block.timestamp)}")
-            st.write(f"**Previous Hash:** {block.previous_hash}")
-            st.write(f"**Current Hash:** {block.hash}")
-            st.json(block.data)
-
             st.write(f"**Timestamp:** {time.ctime(block.timestamp)}")
             st.write(f"**Previous Hash:** {block.previous_hash}")
             st.write(f"**Current Hash:** {block.hash}")
