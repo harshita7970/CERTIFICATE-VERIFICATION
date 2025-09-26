@@ -1,4 +1,4 @@
-sstreamlit==1.28.0
-pandas
-openpyxl
-fpdf
+streamlit==1.28.0
+pandas==2.1.1
+openpyxl==3.1.2
+fpdf2==2.7.3
