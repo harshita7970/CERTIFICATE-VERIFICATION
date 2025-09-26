@@ -10,15 +10,20 @@ from reportlab.pdfgen import canvas
 # ---------------- PDF Generator ---------------- #
 def generate_certificate_pdf(data):
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
+    c = canvas.Canvas(buffer, pagesize=A4, bottomup=1)
     width, height = A4
 
+    # Rotate canvas for landscape
+    c.rotate(90)
+    c.translate(0, -width)
+    width, height = height, width
+
     # Background
-    c.setFillColorRGB(1, 0.97, 0.85)  # soft gold
+    c.setFillColorRGB(1, 0.97, 0.85)
     c.rect(0, 0, width, height, fill=1)
 
     # Border
-    c.setStrokeColorRGB(0.1, 0.2, 0.5)  # deep royal blue
+    c.setStrokeColorRGB(0.1, 0.2, 0.5)
     c.setLineWidth(4)
     c.rect(30, 30, width - 60, height - 60)
 
@@ -34,14 +39,14 @@ def generate_certificate_pdf(data):
     # Title
     c.setFont("Helvetica-Bold", 28)
     c.setFillColorRGB(0.1, 0.2, 0.5)
-    c.drawCentredString(width / 2, height - 100, "Certificate of Achievement")
+    c.drawCentredString(width / 2, height - 80, "Certificate of Achievement")
 
     # Body text
-    c.setFont("Helvetica-Oblique", 12)
+    c.setFont("Helvetica", 12)
     c.setFillColorRGB(0, 0, 0)
-    text = c.beginText(80, height - 150)
+    text = c.beginText(60, height - 130)
     text.setLeading(18)
-    text.setFont("Helvetica-Oblique", 12)
+    text.setFont("Helvetica", 12)
 
     paragraph = f"""
 This is to certify that {data['Student Name']} has successfully completed the course titled "{data['Course']}" at {data['University']}. This certificate is awarded in recognition of their dedication, effort, and achievement in the field of study.
@@ -60,8 +65,8 @@ Issued by: {data['Issuer']}
 
     # Signature and Seal
     c.setFont("Helvetica", 12)
-    c.drawString(80, 100, "Signature: ________________________")
-    c.drawString(width / 2 + 20, 100, "Seal of University/Institution: ________________________")
+    c.drawString(60, 80, "Signature: ________________________")
+    c.drawString(width / 2 + 20, 80, "Seal of University/Institution: ________________________")
 
     # Footer
     c.setFont("Helvetica-Oblique", 10)
