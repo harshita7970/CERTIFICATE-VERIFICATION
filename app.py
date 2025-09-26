@@ -14,17 +14,17 @@ def generate_certificate_pdf(data):
     width, height = A4
 
     # Background
-    c.setFillColorRGB(1, 0.98, 0.9)
+    c.setFillColorRGB(1, 0.97, 0.85)  # soft gold
     c.rect(0, 0, width, height, fill=1)
 
     # Border
-    c.setStrokeColorRGB(0.2, 0.4, 0.6)
+    c.setStrokeColorRGB(0.1, 0.2, 0.5)  # deep royal blue
     c.setLineWidth(4)
     c.rect(30, 30, width - 60, height - 60)
 
     # Watermark
     c.setFont("Helvetica-Bold", 40)
-    c.setFillColorRGB(0.9, 0.9, 0.9)
+    c.setFillColorRGB(0.85, 0.85, 0.85)
     c.saveState()
     c.translate(width / 2, height / 2)
     c.rotate(45)
@@ -32,48 +32,36 @@ def generate_certificate_pdf(data):
     c.restoreState()
 
     # Title
-    c.setFont("Helvetica-Bold", 14)
-    c.setFillColorRGB(0.2, 0.4, 0.6)
+    c.setFont("Helvetica-Bold", 28)
+    c.setFillColorRGB(0.1, 0.2, 0.5)
     c.drawCentredString(width / 2, height - 100, "Certificate of Achievement")
 
     # Body text
-    c.setFont("Helvetica", 12)
+    c.setFont("Helvetica-Oblique", 12)
     c.setFillColorRGB(0, 0, 0)
-    text = c.beginText(80, height - 140)
+    text = c.beginText(80, height - 150)
     text.setLeading(18)
-    text.setFont("Helvetica", 12)
+    text.setFont("Helvetica-Oblique", 12)
 
-    body = f"""
-This is to certify that
+    paragraph = f"""
+This is to certify that {data['Student Name']} has successfully completed the course titled "{data['Course']}" at {data['University']}. This certificate is awarded in recognition of their dedication, effort, and achievement in the field of study.
 
-Student Name: {data['Student Name']}
-
-has successfully completed the course
-
-Course Name: {data['Course']}
-
-at
-
-University / Institution: {data['University']}
-
-This certificate is issued for Type of Certificate: {data['Type']}
-
-Date of Issue: {data['Date of Issue']}
-
-Grade / Score (Optional): {data['Grade']}
+The certificate is issued under the category: {data['Type']}, on the date: {data['Date of Issue']}. The student has obtained the following grade or score: {data['Grade']}.
 
 Remarks: {data['Remarks']}
 
 Issued by: {data['Issuer']}
-
-Signature: ________________________
-Seal of University/Institution: ________________________
     """.strip()
 
-    for line in body.split('\n'):
+    for line in paragraph.split('\n'):
         text.textLine(line.strip())
 
     c.drawText(text)
+
+    # Signature and Seal
+    c.setFont("Helvetica", 12)
+    c.drawString(80, 100, "Signature: ________________________")
+    c.drawString(width / 2 + 20, 100, "Seal of University/Institution: ________________________")
 
     # Footer
     c.setFont("Helvetica-Oblique", 10)
