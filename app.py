@@ -5,6 +5,7 @@ import time
 import pandas as pd
 from fpdf import FPDF
 import io
+import os
 
 # ---------------- Blockchain Classes ---------------- #
 class Block:
@@ -54,12 +55,19 @@ class Blockchain:
 def generate_certificate_pdf(cert_data):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
+
+    # Add Unicode font (DejaVuSans.ttf must be in project folder)
+    pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
+
+    # Title
+    pdf.set_font("DejaVu", "B", 16)
     pdf.cell(200, 10, "🎓 Blockchain Certificate", ln=True, align="C")
+
     pdf.ln(10)
-    pdf.set_font("Arial", "", 12)
+    pdf.set_font("DejaVu", "", 12)
     for key, value in cert_data.items():
         pdf.cell(0, 10, f"{key}: {value}", ln=True)
+
     pdf_output = io.BytesIO()
     pdf.output(pdf_output)
     pdf_output.seek(0)
