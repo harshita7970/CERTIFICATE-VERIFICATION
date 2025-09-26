@@ -140,7 +140,8 @@ with tabs[1]:
                     label="📥 Download Certificate as PDF",
                     data=pdf_buffer,
                     file_name=f"{data['Student Name']}_{data['Course']}_certificate.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
+                    key=f"download_{block.index}"  # ✅ Unique key to prevent error
                 )
     else:
         st.info("⚠️ No certificates have been issued yet.")
@@ -171,6 +172,11 @@ with tabs[3]:
     st.header("🔗 Blockchain Structure & Calculation")
     for block in blockchain.chain:
         with st.expander(f"Block {block.index}"):
+            st.write(f"**Timestamp:** {time.ctime(block.timestamp)}")
+            st.write(f"**Previous Hash:** {block.previous_hash}")
+            st.write(f"**Current Hash:** {block.hash}")
+            st.json(block.data)
+
             st.write(f"**Timestamp:** {time.ctime(block.timestamp)}")
             st.write(f"**Previous Hash:** {block.previous_hash}")
             st.write(f"**Current Hash:** {block.hash}")
