@@ -60,7 +60,7 @@ blockchain = st.session_state.blockchain
 st.title("🎓 Blockchain-based Student Certificate Verification System")
 
 # Tabs for different sheets
-tabs = st.tabs(["➕ Issue Certificate", "📑 Stored Certificates", "✅ Verify Certificate"])
+tabs = st.tabs(["➕ Issue Certificate", "📑 Stored Certificates", "✅ Verify Certificate", "🔗 Blockchain Calculation"])
 
 # ---------------- Tab 1: Issue Certificate ---------------- #
 with tabs[0]:
@@ -146,3 +146,14 @@ with tabs[2]:
         else:
             st.warning("⚠️ Please enter both Student Name and Course Name for verification.")
 
+
+# ---------------- Tab 4: Blockchain Calculation ---------------- #
+with tabs[3]:
+    st.header("🔗 Blockchain Structure & Calculation")
+
+    for block in blockchain.chain:
+        with st.expander(f"Block {block.index}"):
+            st.write(f"**Timestamp:** {time.ctime(block.timestamp)}")
+            st.write(f"**Previous Hash:** {block.previous_hash}")
+            st.write(f"**Current Hash:** {block.hash}")
+            st.json(block.data)
