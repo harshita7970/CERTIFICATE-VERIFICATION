@@ -3,6 +3,8 @@ import hashlib
 import json
 import time
 import pandas as pd
+from fpdf import FPDF
+import io
 
 # ---------------- Blockchain Classes ---------------- #
 class Block:
@@ -38,6 +40,7 @@ class Blockchain:
         latest_block = self.get_latest_block()
         new_block = Block(len(self.chain), latest_block.hash, time.time(), data)
         self.add_block(new_block)
+        return new_block
 
     def verify_certificate(self, student_name, course_name):
         for block in self.chain[1:]:  # skip genesis block
@@ -46,6 +49,24 @@ class Blockchain:
                 data["Course"].lower() == course_name.lower()):
                 return True, data
         return False, None
+
+
+# ---------------- PDF Generator ---------------- #
+def generate_certificate_pdf(cert_data):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(200, 10, "🎓 Blockchain Certificate", ln=True, align="C")
+    pdf.ln(10)
+
+    pdf.set_font("Arial", "", 12)
+    for key, value in cert_data.items():
+        pdf.cell(0, 10, f"{key}: {value}", ln=True)
+
+    pdf_output = io.BytesIO()
+    pdf.output(pdf_output)
+    pdf_output.seek(0)
+    return pdf_output
 
 
 # ---------------- Streamlit UI ---------------- #
@@ -60,7 +81,12 @@ blockchain = st.session_state.blockchain
 st.title("🎓 Blockchain-based Student Certificate Verification System")
 
 # Tabs for different sheets
-tabs = st.tabs(["➕ Issue Certificate", "📑 Stored Certificates", "✅ Verify Certificate", "🔗 Blockchain Calculation"])
+tabs = st.tabs([
+    "➕ Issue Certificate",
+    "📑 Stored Certificates",
+    "✅ Verify Certificate",
+    "🔗 Blockchain Calculation"
+])
 
 # ---------------- Tab 1: Issue Certificate ---------------- #
 with tabs[0]:
@@ -72,7 +98,7 @@ with tabs[0]:
         student_name = st.text_input("👤 Student Name")
         course_name = st.text_input("📘 Course Name")
         university = st.text_input("🏫 University / Institution")
-        cert_type = st.selectbox("📜 Type of Certificate", 
+        cert_type = st.selectbox("📜 Type of Certificate",
                                  ["Academic", "Participation", "Excellence", "Sports", "Cultural", "Other"])
 
     with col2:
@@ -92,8 +118,17 @@ with tabs[0]:
             "Grade": grade,
             "Remarks": remarks
         }
-        blockchain.mine_block(cert_data)
+        new_block = blockchain.mine_block(cert_data)
         st.success(f"✅ Certificate for {student_name} issued successfully and added to blockchain!")
+
+        # --- Download issued certificate as PDF ---
+        pdf_file = generate_certificate_pdf(cert_data)
+        st.download_button(
+            label="⬇️ Download This Certificate (PDF)",
+            data=pdf_file,
+            file_name=f"certificate_{student_name.replace(' ', '_')}.pdf",
+            mime="application/pdf"
+        )
 
 
 # ---------------- Tab 2: Stored Certificates ---------------- #
@@ -114,12 +149,33 @@ with tabs[1]:
                 "Issuer": data["Issuer"],
                 "Grade": data["Grade"],
                 "Remarks": data["Remarks"],
-                "Hash": block.hash[:15] + "..."  # shorten for display
+                "Hash": block.hash
             }
             records.append(record)
 
         df = pd.DataFrame(records)
         st.dataframe(df, use_container_width=True)
+
+        # --- Download all certificates ---
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="⬇️ Download All Certificates (CSV)",
+            data=csv,
+            file_name="certificates_blockchain.csv",
+            mime="text/csv"
+        )
+
+        excel_bytes = io.BytesIO()
+        with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Certificates")
+        excel_bytes.seek(0)
+
+        st.download_button(
+            label="⬇️ Download All Certificates (Excel)",
+            data=excel_bytes,
+            file_name="certificates_blockchain.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     else:
         st.info("⚠️ No certificates have been issued yet.")
 
